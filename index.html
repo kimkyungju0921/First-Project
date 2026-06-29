@@ -6285,7 +6285,19 @@ function renderChartOnCanvas(canvas, chartDef, datasetObj, instanceKey, instance
     requestAnimationFrame(function(){ renderChartOnCanvas(canvas, chartDef, datasetObj, instanceKey, instanceStore, retryCount+1); });
     return;
   }
-  const {labels, values} = aggregateData(sheet, chartDef.x, chartDef.y, chartDef.agg);
+ let {labels, values} = aggregateData(sheet, chartDef.x, chartDef.y, chartDef.agg);
+  // [수정] 시간(Date 컬럼 기반 경과시간) 축은 분/초/시간 중 자동으로 고른
+  // 단위의 소수점 값(예: "21.69"초, "0.37"분)이라 직관적으로 읽기 어렵다.
+  // 회차 비교 그래프에서 쓰던 것과 같은 "분:초" 시계 표기로 통일한다.
+  const usesElapsedTimeAxis = chartDef.x === '__rowidx__' && sheet.elapsedTime;
+  if(usesElapsedTimeAxis){
+    const unit = sheet.elapsedTime.unit;
+    const mul = unit==='sec' ? (1/60) : unit==='hour' ? 60 : 1;
+    labels = labels.map(l=>{
+      const n = parseFloat(l);
+      return isNaN(n) ? l : formatMinutesClock(n*mul);
+    });
+  }
   if(instanceStore[instanceKey]){ instanceStore[instanceKey].destroy(); }
   // 팔레트: 첫 색상은 기본 라인/막대 색, 마지막(red)은 line 차트의 마지막
   // 데이터 포인트를 강조하는 용도로 예약 (참고 이미지의 시그니처 디테일)
@@ -6335,7 +6347,7 @@ function renderChartOnCanvas(canvas, chartDef, datasetObj, instanceKey, instance
       },
       scales: chartDef.type==='pie' ? {} : {
         x:{ grid:{ display:false }, ticks:{font:{size:10.5}, color:'#9CA3AF'}, border:{color:'#E5E7EB'},
-            title:{ display:true, text: (chartDef.x==='__rowidx__' ? (sheet.elapsedTime ? sheet.elapsedTime.label : '데이터 순번(행)') : chartDef.x), font:{size:11}, color:'#71717A' } },
+            title:{ display:true, text: (chartDef.x==='__rowidx__' ? (sheet.elapsedTime ? '시간 (분:초)' : '데이터 순번(행)') : chartDef.x), font:{size:11}, color:'#71717A' } },
         y:{ grid:{ color:'#F1F2F6', },  ticks:{font:{size:10.5}, color:'#9CA3AF'}, border:{display:false}, beginAtZero:true,
             title:{ display:true, text: chartDef.y, font:{size:11}, color:'#71717A' } }
       }
