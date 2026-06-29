@@ -6030,11 +6030,19 @@ function autoGenerateCharts(sheet){
     if(uniq>=2 && uniq <= rowCount){ xCol = c; break; }
   }
 
-  // [수정] 텍스트 X축이 없으면(예: Time(hr)/With RO(%)/Without RO(%)처럼
-  // 전부 숫자 컬럼인 경우), 숫자 컬럼 중 "시간/순서" 성격인 컬럼을 X축으로
-  // 쓴다 — 헤더 이름에 시간 관련 단어가 있거나, 값이 단조증가(또는
-  // 단조감소)하는 컬럼을 우선 선택. 그래도 없으면 마지막 수단으로 엑셀
-  // 행 번호(__rowidx__)를 사용한다.
+ // [수정] "Date" 컬럼에서 이미 정확한 경과시간(elapsedTime)을 계산해둔
+  // 경우, 그게 가장 신뢰도 높은 시간축이므로 다른 추측보다 최우선으로
+  // 쓴다 ('__rowidx__'로 표시하면 aggregateData가 자동으로 elapsedTime
+  // 값을 사용해준다). 컬럼 이름에 우연히 "sec/time" 같은 단어가 들어있어도
+  // 실제로는 농도 등 다른 의미일 수 있으므로(예: "SEC (ppm)" 컬럼), 진짜
+  // Date 기반 시간축이 있다면 이름 기반 추측보다 항상 우선해야 한다.
+  if(!xCol && sheet.elapsedTime){
+    xCol = '__rowidx__';
+  }
+
+  // [수정] 그래도 X축이 없으면(Date 컬럼이 없는 경우 — 예: Time(hr)/With RO(%)/
+  // Without RO(%)처럼 전부 숫자 컬럼인 시트), 숫자 컬럼 중 "시간/순서" 성격인
+  // 컬럼을 헤더 이름이나 단조증가(또는 단조감소) 여부로 추정해서 X축으로 쓴다.
   if(!xCol){
     const timeNameRe = /시간|time|hr|hour|min|sec|date|elapsed|경과/i;
     let candidate = numCols.find(c => timeNameRe.test(String(c)));
